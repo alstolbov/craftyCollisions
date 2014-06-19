@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+      body, html { margin:0; padding: 0; overflow:hidden; font-family:Arial; font-size:20px }
+      #canvas { border:2px solid black; margin:5px auto}
+    </style>
+  </head>
+  <body>
+    <script type="text/javascript" src="crafty-min.js"></script>
+    <script>
+    window.onload = function () {
+
+        //получить все методы объекта
+        function getAllMethods(object) {
+            return Object.getOwnPropertyNames(object).filter(function(property) {
+                return typeof object[property] == 'function';
+            });
+        }
+
+
+        Crafty.init(400, 400, 'canvas');
+
+        Crafty.scene("main", function () {
+
+            Crafty.c('block', {
+                init: function(){
+                    this.requires("2D, Canvas, Color, Draggable");
+                    this.color("yellow");
+                }
+            });
+        	
+
+            Crafty.c('Player', {
+                init: function(){
+                    this.requires("2D, Canvas, Color, Multiway, Collision, Draggable, WiredHitBox");
+                    this.attr({x:150, y:150, w:50, h:50})
+                    .color("red")
+                    .multiway({x:2,y:1}, {W: -90, S: 90, D: 0, A: 180})
+                    .bind('Moved', function(from) {
+                        var plX = this._x - 10;
+                        console.log(plX);
+                        if(this.hit('block')){
+                            var col = this.hit('block');
+                            console.log(col[0].obj);
+                            //console.log(getAllMethods(col[0].obj));
+                            col[0].obj._attr("_x", col[0].obj._x - 1);
+                            this.attr({x: from.x, y:from.y});
+                        }
+
+                      });
+
+                  // this.bind('Dragging', function(from) {
+                  //       if(this.hit('block')){
+                  //         // this.attr({x: from.x, y:from.y});
+                  //         this.dragDirection({x:0, y:1})
+                  //       }
+
+                  //     });
+
+                }
+            });
+
+            Crafty.c("Mover", {
+                _speed: 2,
+                _onmousedown:function (e) {
+                //e.realX, e.realY - новые координаты
+                //this.x, this.y - старые
+
+                this._target = { x: e.realX, y: e.realY };
+                var dx = e.realX - this.x, dy = e.realY - this.y;
+                this._movement={//задаем вектор и скорость изменения координат
+                    x:(dx * this._speed) / (Math.sqrt(dx * dx + dy * dy)),
+                    y:(dy * this._speed) / (Math.sqrt(dx * dx + dy * dy))
+                },
+                this.trigger('NewDirection', this._movement);
+              },
+
+              init: function () {
+                var lockX = false,
+                    lockY = false;
+
+                this.requires("2D, DOM, Color, Multiway, Mouse, Collision");
+                this.bind('Moved', function(from) {
+                    if(this.hit('block')){
+                        console.log("collision!");
+                        this.attr({x: from.x, y:from.y});
+                    }
+
+                  });
+                //this.multiway({x:2,y:1}, {W: -90, S: 90, D: 0, A: 180})
+
+                Crafty.addEvent(this, Crafty.stage.elem, "mousedown", this._onmousedown);
+
+                
+                this.bind('NewDirection', function(arg) {
+                    console.log('NewDirection is called' + JSON.stringify(arg));
+                });
+
+                function correctVector(self){
+                    var dx = self._target.x - self.x, dy = self._target.y - self.y;
+                    self._movement={//задаем вектор и скорость изменения координат
+                    x:(dx * self._speed) / (Math.sqrt(dx * dx + dy * dy)),
+                    y:(dy * self._speed) / (Math.sqrt(dx * dx + dy * dy))
+                  }
+                  self.trigger('NewDirection', self._movement);
+                }
+                
+
+                var norm=function(x, y) {
+                    absx=Math.abs(x);// Math.abs - модуль числа (без - и + )
+                    absy=Math.abs(y);
+
+                    if(absx>absy) {
+                        max=absx;
+                        min=absy;
+                    } else {
+                        max=absy;
+                        min=absx;
+                    }
+
+                    return max*Math.sqrt(1+Math.pow(min/max,2)); //Math.sqrt - квадратный корень из числа, Math.pow - возводит число(min/max) в степень(2)
+                };
+
+
+                this.bind("EnterFrame", function () {
+                    
+                  document.getElementById('x').innerHTML=this.x;
+                  document.getElementById('y').innerHTML=this.y;
+                  if(this._target) {
+                    document.getElementById('targetx').innerHTML=this._target.x;
+                    document.getElementById('targety').innerHTML=this._target.y;
+                  }
+
+                  if (this.disableControls || !this._target) return;
+                  if (norm(this._target.x - this.x, this._target.y - this.y) < this._speed) {
+                    this._movement={
+                      x:this._target.x - this.x,
+                      y:this._target.y - this.y
+                    };
+                    this.x=this._target.x;
+                    this.y=this._target.y;
+                    this._target=undefined;
+                    this.trigger('NewDirection', this._movement);
+                  }
+
+                  var oldX = this.x;
+                  var oldY = this.y;
+                  if (this._movement.x !== 0) {
+                    this.x += this._movement.x;
+                    this.trigger('Moved', { x: this.x - this._movement.x, y: this.y });
+                  }
+                  if (this._movement.y !== 0) {
+                    this.y += this._movement.y;
+                    this.trigger('Moved', { x: this.x, y: this.y - this._movement.y });
+                  }
+                  if(this._target !== undefined){
+                    if(this.x !== this._target.x.toFixed() && oldX == this.x){
+                      lockX = true;
+                      // console.log("X frozen on " + oldX);
+                      // correctVector(this);
+                      // this.y ++;
+                    }
+                    if(this.y !== this._target.y.toFixed() && oldY == this.y){
+                      lockY = true;
+                      // console.log("Y frozen on " + oldY);
+                      // correctVector(this);
+                      // this.x ++;
+                    }
+                    if(lockX){
+                      if(this.x !== this._target.x.toFixed() && oldX !== this.x){
+                        correctVector(this);
+                        lockX = false;
+                      }
+                    }
+                    if(lockY){
+                      if(this.y !== this._target.y.toFixed() && oldY !== this.y){
+                        correctVector(this);
+                        lockY = false;
+                      }
+                    }
+                  }
+              });
+            }
+            });
+
+            var bl = Crafty.e("block").attr({x:100, y:100, w:50, h:50});
+            Crafty.e("block").attr({x:250, y:100, w:50, h:50});
+            Crafty.e("block").attr({x:250, y:250, w:50, h:50});
+            Crafty.e("block").attr({x:100, y:250, w:50, h:50});
+
+          //добавляем обьект с областью сробатывания события мыши
+          // Crafty.e("2D, DOM, Color, Mouse")
+          //   .color("black")
+          //   .attr({ w: 100, h: 100 })
+          //   .bind('MouseOver', function() {console.log("over")})
+          //   .areaMap([0,0], [50,0], [50,50], [0,50]);
+
+
+            var player = Crafty.e('Player');
+
+            player.collision().onHit('block', function(){
+                console.log('1');
+            });
+
+
+            bl.z = 2; //установка z-index
+
+          // player.bind('KeyDown', function(e) {
+          //   if(e.key == 90){
+          //     console.log("press 'z'!");
+          //   }
+          // });
+
+          // player.addComponent("Mouse"); //добавить компонент
+          // player.bind('Click', function(e) { //проверка клика по обьекту
+          //   console.log("Clicked");
+          // });
+          // player.bind("MouseMove", function(e){ //проверка прохождения мыши над обьектом
+          //       console.log("MouseMove:"+ Crafty.mousePos.x +", "+ Crafty.mousePos.y);
+          //     });
+
+          // Crafty.addEvent(this, Crafty.stage.elem, "mousedown", function(e) {
+          //     console.log("MouseDown:"+ Crafty.mousePos.x +", "+ Crafty.mousePos.y);
+          // });
+
+            var newPlayer = Crafty.e("Mover")
+                .attr({x: 300, y: 300, w: 50, h: 50})
+                .color("rgb(0,255,0)");
+
+        });//END scene "Main"
+
+
+
+        Crafty.scene("main");
+    };
+    </script>
+    <div id="canvas"></div>
+    <div id='x'></div>
+    <div id='y'></div>
+    <div id='targetx'></div>
+    <div id='targety'></div>
+
+  </body>
+</html>

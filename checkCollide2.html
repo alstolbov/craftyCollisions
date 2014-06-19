@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body, html { margin:0; padding: 0; overflow:hidden; font-family:Arial; font-size:20px }
+      #canvas { border:2px solid black; margin:5px auto}
+    </style>
+  </head>
+  <body>
+  	<div id="Game"></div>
+    <script type="text/javascript" src="crafty-SNAPSHOT.js"></script>
+    <script>
+Crafty.init();
+Crafty.canvas.init();
+WIDTH = 640;
+HEIGHT = 480;
+ 
+Crafty.c("Board", {
+    init: function() {
+
+        this.addComponent("2D, Canvas, Mouse, Color");
+        this.x = 0;
+        this.y = 0;
+        this.w = WIDTH;
+        this.h = HEIGHT;
+        this.color("#ccc");
+        
+        this.bind("Click", function(){
+            player.targetX = Crafty.mousePos.x;
+            player.targetY = Crafty.mousePos.y;
+            player.startX = player.x;
+            player.startY = player.y;
+            player.moving = true;
+        });
+         
+    },
+});
+
+/* Create a dark trap for the player, slowing him down*/
+
+Crafty.c("DarkTile", {
+    init: function() {
+
+        this.addComponent("2D, Canvas, Color, Collision");
+        this.x = 0;
+        this.y = 240;
+        this.w = 240;    // width
+        this.h = 240;    // height
+        this.color("#000");
+        
+        this.bind("EnterFrame", function(e) {
+            // update the state for each frame
+        });
+
+        this.bind("Click", function(e) {
+            // do something when the mouse is clicked on an Entity
+        });
+        
+        this.collision(
+//            new Crafty.polygon([0,0],[300,0],[300,300],[0,300])
+            new Crafty.circle(0,0,500)
+        );
+     
+    },
+});
+
+
+
+
+/*---ENTITIES---*/
+
+Crafty.e("Board");
+
+Crafty.e("DarkTile, darkness");
+
+
+var player = Crafty.e("2D, Canvas, Color, Tween, Collision")
+        .attr({
+            x: 0, 
+            y: 0, 
+            w: 32, 
+            h: 32, 
+            moving: false,
+            speed: 4
+            
+        }) 
+        .color("#0000FF")
+        .bind("EnterFrame", function(e) {
+            if (this.moving) {
+
+                
+                //Calculate difference in distance between start and final position
+                dx = this.targetX - this.x;
+                dy = this.targetY - this.y;            
+                
+                var distance = Math.sqrt((dx*dx)+(dy*dy));
+                
+                dx = dx/distance;
+                dy = dy/distance;
+                
+                
+                //Move sprite
+                this.x += dx*this.speed;
+                this.y += dy*this.speed;
+                
+                
+                //If current position with speed is higher than destination, set to destination
+                if ((dx > 0 && this.x + this.speed >= this.targetX) || (dx < 0 && this.x - this.speed <= this.targetX)) {
+                    this.x = this.targetX
+                }
+                if ((dy > 0 && this.y + this.speed >= this.targetY) || (dy < 0 && this.y - this.speed <= this.targetY)) {
+                    this.y = this.targetY
+                }
+                
+                //If at destination, stop
+                if (this.x == this.targetX && this.y == this.targetY) {
+                    this.moving = false;
+                }
+                
+                if(this.hit('darkness')){
+                    this.speed = 0.5;
+                    this.color("rgb(255,255,255)");
+                }
+                else {this.speed = 4;}
+                
+                
+                
+                
+                
+                
+            }
+          
+        })
+        .collision()
+        
+        .onHit("darkness", function() {
+            //In darkness
+            this.speed = 0.5;            
+            console.log('In darkness');
+            
+                          
+        }, function() {
+            //Not in darkness
+            this.speed = 4;
+            console.log('Not in darkness');
+        })
+    </script>
+</body>
+</html>

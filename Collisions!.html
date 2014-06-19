@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body, html { margin:0; padding: 0; overflow:hidden; font-family:Arial; font-size:20px }
+        #canvas { border:2px solid black; margin:5px auto}
+    </style>
+</head>
+<body>
+<script type="text/javascript" src="crafty-min.js"></script>
+<script type="text/javascript" src="hitbox.js"></script>
+<script>
+window.onload = function () {
+    var canvasWidth = 400,
+        canvasHeight = 400,
+        Action = 'move'; //варианты действий: 'move', 'click'
+
+    var playerArea = [[10,20],[60,200],[300,300],[350,20]];
+
+    Crafty.init(canvasWidth, canvasHeight, 'canvas');
+
+    Crafty.scene("main", function () {
+
+        Crafty.sprite(16, "sprite.png", {
+            grass1: [0,0],
+            grass2: [1,0],
+            grass3: [2,0],
+            grass4: [3,0],
+            flower: [0,1],
+            bush1:  [0,2],
+            bush2:  [1,2],
+            player: [0,3]
+        });
+
+        //clickArea
+        Crafty.c('clickArea', {
+            init: function (){
+                this.requires("2D, Canvas, Color, Image, Mouse, Collision, WiredHitBox")
+                .bind('Click', function(e) {
+                    console.log('clickArea: ' + e.mouseButton + ' x: ' + e.realX + ', y: ' + e.realY);
+                    Action = 'move';
+                })
+                .attr({x:0, y:0, w:canvasWidth, h:canvasHeight})
+                .image("bg1.png");          
+            }
+        });
+        //END clickArea
+
+        //simpleBlock
+        Crafty.c('block', {
+            init: function(){
+                var THIS = this;
+                this.requires("2D, Canvas, Color, Mouse");
+                this.color("#666");
+                this.bind('Click', function(e) {
+                    Action = 'click';
+                    console.log('block - x: ' + e.realX + ', y: ' + e.realY);
+                })  
+                .bind('MouseOver', function(e){
+                    THIS.color("#ccc");
+                }).bind('MouseOut', function(e){
+                    THIS.color("#666");
+                })
+                .attr({x:150, y:100, w:100, h:40});
+            }
+        });
+        //END simpleBlock
+
+        //Player
+        Crafty.c('Player', {
+            _speed: 2,
+            _onmousedown:function (e) {
+                //e.realX, e.realY - новые координаты
+                //this.x, this.y - старые
+                if(Action == 'move'){
+                    var area = new Crafty.polygon(playerArea);
+                    if(area.containsPoint(e.realX, e.realY)){
+                        this._target = { x: e.realX, y: e.realY };
+                        var dx = e.realX - this.x, dy = e.realY - this.y;
+                        this._movement={//задаем вектор и скорость изменения координат
+                            x:(dx * this._speed) / (Math.sqrt(dx * dx + dy * dy)),
+                            y:(dy * this._speed) / (Math.sqrt(dx * dx + dy * dy))
+                        },
+                        this.trigger('NewDirection', this._movement);
+                    }
+                }
+            },
+
+            init: function () {
+                this.requires("2D, Canvas, Color, Mouse, Collision, SpriteAnimation, player");
+                var lockX = false,
+                    lockY = false;
+                var startAnimation = false;
+                var THIS = this;
+
+                this.bind('Moved', function(from) {
+                    if(this.hit('block')){
+                        this.attr({x: from.x, y:from.y});
+                    }
+                });
+
+                THIS.reel('PlayerRunning', 600, [[0, 3], [1,3], [2,3], [1,3]]);
+                //THIS.animate('PlayerRunning', -1);
+
+                this.attr({x: 100, y: 100, w: 16, h: 20});
+
+                Crafty.addEvent(this, Crafty.stage.elem, "click", this._onmousedown);
+                
+                this.bind('NewDirection', function(arg) {
+                    //THIS.animate('PlayerRunning', -1);
+                    // console.log('NewDirection is called' + JSON.stringify(arg));
+                });
+
+                function correctVector(self){
+                    var dx = self._target.x - self.x, dy = self._target.y - self.y;
+                    self._movement={//задаем вектор и скорость изменения координат
+                        x:(dx * self._speed) / (Math.sqrt(dx * dx + dy * dy)),
+                        y:(dy * self._speed) / (Math.sqrt(dx * dx + dy * dy))
+                    }
+                    self.trigger('NewDirection', self._movement);
+                }
+                
+
+                var norm=function(x, y) {
+                    absx=Math.abs(x);// Math.abs - модуль числа (без - и + )
+                    absy=Math.abs(y);
+
+                    if(absx>absy) {
+                        max=absx;
+                        min=absy;
+                    } else {
+                        max=absy;
+                        min=absx;
+                    }
+                    return max*Math.sqrt(1+Math.pow(min/max,2)); //Math.sqrt - квадратный корень из числа, Math.pow - возводит число(min/max) в степень(2)
+                };
+
+                this.bind("EnterFrame", function () {
+                    document.getElementById('x').innerHTML=this.x;
+                    document.getElementById('y').innerHTML=this.y;
+                    if(this._target) {
+                        if(!startAnimation){
+                            THIS.animate('PlayerRunning', -1);
+                            startAnimation = true;
+                        }
+                        document.getElementById('targetx').innerHTML=this._target.x;
+                        document.getElementById('targety').innerHTML=this._target.y;
+                    }else{
+                        if(startAnimation){
+                            THIS.pauseAnimation('PlayerRunning');
+                            startAnimation = false;
+                        }
+                    }
+
+                    if (this.disableControls || !this._target) return;
+                    if (norm(this._target.x - this.x, this._target.y - this.y) < this._speed) {
+                        this._movement={
+                            x:this._target.x - this.x,
+                            y:this._target.y - this.y
+                        };
+                        this.x=this._target.x;
+                        this.y=this._target.y;
+                        this._target=undefined;
+                        this.trigger('NewDirection', this._movement);
+                    }
+
+                    var oldX = this.x;
+                    var oldY = this.y;
+                    if (this._movement.x !== 0) {
+                        this.x += this._movement.x;
+                        this.trigger('Moved', { x: this.x - this._movement.x, y: this.y });
+                    }
+                    if (this._movement.y !== 0) {
+                        this.y += this._movement.y;
+                        this.trigger('Moved', { x: this.x, y: this.y - this._movement.y });
+                    }
+                    if(this._target !== undefined){
+                        if(this.x !== this._target.x.toFixed() && oldX == this.x){
+                            lockX = true;
+                        }
+                        if(this.y !== this._target.y.toFixed() && oldY == this.y){
+                            lockY = true;
+                        }
+                        if(lockX){
+                            if(this.x !== this._target.x.toFixed() && oldX !== this.x){
+                                correctVector(this);
+                                lockX = false;
+                            }
+                        }
+                        if(lockY){
+                            if(this.y !== this._target.y.toFixed() && oldY !== this.y){
+                                correctVector(this);
+                                lockY = false;
+                            }
+                        }
+                    }
+                });
+            }//END init
+        });
+        //END Player
+
+        var clickArea = Crafty.e('clickArea').collision(new Crafty.polygon(playerArea));//show player`s click area 
+        var block = Crafty.e("block");
+        var Player = Crafty.e("Player");
+
+    });//END scene "Main"
+
+
+
+
+    Crafty.scene("main");
+};
+</script>
+<div id="canvas"></div>
+<div id='x'></div>
+<div id='y'></div>
+<div id='targetx'></div>
+<div id='targety'></div>
+
+</body>
+</html>

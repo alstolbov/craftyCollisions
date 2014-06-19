@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body, html { margin:0; padding: 0; overflow:hidden; font-family:Arial; font-size:20px }
+      #canvas { border:2px solid black; margin:5px auto}
+    </style>
+  </head>
+  <body>
+  	<div id="Game"></div>
+    <script type="text/javascript" src="crafty-min.js"></script>
+    <script>
+console.log(Crafty.getVersion());
+Crafty.init(300,300, document.querySelector('#Game'));
+Crafty.e('2D, Canvas, Color, Mouse')
+    .attr({
+        x: 0,
+        y: 0,
+        w: 300,
+        h: 300
+    })
+    .color('#333')
+    .bind('MouseMove', function () {
+        player.x = Crafty.mousePos.x - (32 / 2);
+        player.y = Crafty.mousePos.y - (32 / 2);
+    });
+
+Crafty.c('Enemy', {
+    init: function () {
+        this
+            .addComponent('2D, Canvas, Color, Collision, WiredHitBox')
+            .attr({
+                x: 134,
+                y: 134,
+                w: 32,
+                h: 32
+            })
+            .color('#ff0');
+    }
+})
+
+var enemy = Crafty.e('Enemy');
+var player = Crafty.e('2D, Canvas, Color, Collision, WiredHitBox')
+    .attr({
+        x: 134,
+        y: 134,
+        w: 32,
+        h: 32
+    })
+    .color('#600')
+    .collision(new Crafty.polygon([0,0], [0,6], [8, 13], [24,13], [32,6], [32,0]))
+    .onHit('Enemy',
+        function() {
+            enemy.color('#fff');
+        },
+        function() {
+            enemy.color('#ff0');
+        }
+    );
+    </script>
+</body>
+</html>

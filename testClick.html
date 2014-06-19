@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+		<style>
+			body, html { margin:0; padding: 0; overflow:hidden; font-family:Arial; font-size:20px }
+			#canvas { border:2px solid black; margin:5px auto}
+		</style>
+	</head>
+	<body>
+		<script type="text/javascript" src="crafty-min.js"></script>
+		<script>
+        //получить все методы объекта
+        function getAllMethods(object) {
+            return Object.getOwnPropertyNames(object).filter(function(property) {
+                return typeof object[property] == 'function';
+            });
+        }
+		window.onload = function () {
+
+				Crafty.init(400, 400, 'canvas');
+
+				Crafty.scene("main", function () {
+		            Crafty.c('block', {
+		                init: function(){
+		                    this.requires("2D, Canvas, Color, Mouse");
+		                    this.color("#666");
+		                    this.bind('Click', function(e) {
+		                    	console.log('1) x: ' + e.realX + ', y: ' + e.realY)
+		                	})
+		                	.attr({x:150, y:100, w:150, h:150});
+				            //Crafty.addEvent(this, Crafty.stage.elem, "mousedown", this._onmousedown);
+		                }
+		            });
+
+		            Crafty.c('block2', {
+		                init: function(){
+		                    this.requires("2D, Canvas, Color, Mouse, Collision");
+		                    this.color("#fff");
+		                    this.bind('Click', function(e) {
+		                    	console.log('CLICK 2 - Button: ' + e.mouseButton + ' x: ' + e.realX + ', y: ' + e.realY)
+		                    })
+		                    .attr({x:200, y:100, w:50, h:50});
+		                    //Crafty.addEvent(this, Crafty.stage.elem, "mousedown", this._onmousedown);
+		                }
+		            });
+
+		            var block = Crafty.e("block");
+	            	var block2 = Crafty.e("block2");
+	            	
+
+				});//END scene "Main"
+
+				Crafty.scene("main");
+		};
+		</script>
+		<div id="canvas"></div>
+		<div id='x'></div>
+		<div id='y'></div>
+		<div id='targetx'></div>
+		<div id='targety'></div>
+
+	</body>
+</html>

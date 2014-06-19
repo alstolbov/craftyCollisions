@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+		<style>
+			body, html { margin:0; padding: 0; overflow:hidden; font-family:Arial; font-size:20px }
+			#canvas { border:2px solid black; margin:5px auto}
+		</style>
+	</head>
+	<body>
+		<script type="text/javascript" src="crafty-min.js"></script>
+		<script>
+        //получить все методы объекта
+        function getAllMethods(object) {
+            return Object.getOwnPropertyNames(object).filter(function(property) {
+                return typeof object[property] == 'function';
+            });
+        }
+		window.onload = function () {
+
+				Crafty.init(400, 400, 'canvas');
+
+				Crafty.scene("main", function () {
+		            Crafty.c('field', {
+		                init: function(){
+		                	//можно использовать полигон для поля перемещения
+		                	var poly = new Crafty.polygon([0,0], [150,0], [150,150], [0,150]);
+
+		                    this.requires("2D, Canvas, Color, Mouse")
+			                    .color("#ccc")
+							    .attr({x: 10, y:100, w: 380, h: 200 })
+							    .bind('Click', function(e) {
+							    	console.log('CLICK - button: ' + e.mouseButton + ' x: ' + e.realX + ', y: ' + e.realY);
+							    	console.log(poly.containsPoint(e.realX, e.realY));
+							    	if( e.mouseButton == 0 ){
+								    	// player._onmousedown(e);
+								    }
+							    })
+							    //можно использовать карту для поля перемещения
+							    // .areaMap([0,0], [180,0], [180,180], [0,180]);	
+		                },
+		                _onmousedown:function (e) {
+		                	console.log(console.log('CLICK - x: ' + e.realX + ', y: ' + e.realY))
+						}
+		            });
+
+		           Crafty.c('block', {
+		                init: function(){
+		                    this.requires("2D, Canvas, Color, Mouse, Collision");
+		                    this.color("yellow");
+		                    this.attr({w:60, h:60});
+		                    this.collision(
+			           			new Crafty.polygon([20,20],[40,20],[40,40],[20,40])
+					            //new Crafty.circle(15,15,30)
+					        );
+					        this.bind('MouseUp', function(e) {
+							    	console.log('CLICK!!! - button: ' + e.mouseButton + ' x: ' + e.realX + ', y: ' + e.realY);
+							})
+
+					        Crafty.e("2D, Canvas, Color").attr({x: 120, y: 170, w: 20, h: 20}).color("#333");
+		                }
+		            });
+
+
+		            Crafty.c('player', {
+		                init: function(){
+			                this.requires("2D, DOM, Color, Multiway, Mouse, Collision");
+
+							this.bind('Moved', function(from) {
+								if(this.hit('block')){
+								    // console.log("collision!");
+								    this.attr({x: from.x, y:from.y});
+								}
+							});
+							this.collision();
+
+			                var lockX = false,
+			                    lockY = false;
+
+		                    // this.bind('MouseMove', function(e) {
+		                    // 	console.log('CLICK 2 - Button: ' + e.mouseButton + ' x: ' + e.realX + ', y: ' + e.realY)
+		                    // });
+
+			               function correctVector(self){
+			                    var dx = self._target.x - self.x, dy = self._target.y - self.y;
+			                    self._movement={//задаем вектор и скорость изменения координат
+			                    x:(dx * self._speed) / (Math.sqrt(dx * dx + dy * dy)),
+			                    y:(dy * self._speed) / (Math.sqrt(dx * dx + dy * dy))
+			                  }
+			                  self.trigger('NewDirection', self._movement);
+			                }
+			                
+
+			                var norm=function(x, y) {
+			                    absx=Math.abs(x);// Math.abs - модуль числа (без - и + )
+			                    absy=Math.abs(y);
+
+			                    if(absx>absy) {
+			                        max=absx;
+			                        min=absy;
+			                    } else {
+			                        max=absy;
+			                        min=absx;
+			                    }
+
+			                    return max*Math.sqrt(1+Math.pow(min/max,2)); //Math.sqrt - квадратный корень из числа, Math.pow - возводит число(min/max) в степень(2)
+			                };
+			               this.bind("EnterFrame", function () {
+			                    
+			                  document.getElementById('x').innerHTML=this.x;
+			                  document.getElementById('y').innerHTML=this.y;
+			                  if(this._target) {
+			                    document.getElementById('targetx').innerHTML=this._target.x;
+			                    document.getElementById('targety').innerHTML=this._target.y;
+			                  }
+
+			                  if (this.disableControls || !this._target) return;
+			                  if (norm(this._target.x - this.x, this._target.y - this.y) < this._speed) {
+			                    this._movement={
+			                      x:this._target.x - this.x,
+			                      y:this._target.y - this.y
+			                    };
+			                    this.x=this._target.x;
+			                    this.y=this._target.y;
+			                    this._target=undefined;
+			                    this.trigger('NewDirection', this._movement);
+			                  }
+
+			                  var oldX = this.x;
+			                  var oldY = this.y;
+			                  if (this._movement.x !== 0) {
+			                    this.x += this._movement.x;
+			                    this.trigger('Moved', { x: this.x - this._movement.x, y: this.y });
+			                  }
+			                  if (this._movement.y !== 0) {
+			                    this.y += this._movement.y;
+			                    this.trigger('Moved', { x: this.x, y: this.y - this._movement.y });
+			                  }
+			                  if(this._target !== undefined){
+			                    if(this.x !== this._target.x.toFixed() && oldX == this.x){
+			                      lockX = true;
+			                      // console.log("X frozen on " + oldX);
+			                      // correctVector(this);
+			                      // this.y ++;
+			                    }
+			                    if(this.y !== this._target.y.toFixed() && oldY == this.y){
+			                      lockY = true;
+			                      // console.log("Y frozen on " + oldY);
+			                      // correctVector(this);
+			                      // this.x ++;
+			                    }
+			                    if(lockX){
+			                      if(this.x !== this._target.x.toFixed() && oldX !== this.x){
+			                        correctVector(this);
+			                        lockX = false;
+			                      }
+			                    }
+			                    if(lockY){
+			                      if(this.y !== this._target.y.toFixed() && oldY !== this.y){
+			                        correctVector(this);
+			                        lockY = false;
+			                      }
+			                    }
+			                  }
+			              });
+
+
+
+		                },
+		                _onmousedown:function (e) {
+			                //e.realX, e.realY - новые координаты
+			                //this.x, this.y - старые
+
+			                this._target = { x: e.realX, y: e.realY };
+			                var dx = e.realX - this.x, dy = e.realY - this.y;
+			                this._movement={//задаем вектор и скорость изменения координат
+			                    x:(dx * this._speed) / (Math.sqrt(dx * dx + dy * dy)),
+			                    y:(dy * this._speed) / (Math.sqrt(dx * dx + dy * dy))
+			                },
+			                this.trigger('NewDirection', this._movement);
+						}
+		            });
+
+		            var field = Crafty.e("field");
+		            var bl = Crafty.e("block").attr({x:100, y:150});
+	            	// var player = Crafty.e("player").attr({x:100, y:250, w:20, h:20}).color("#000");
+	            	
+
+// Crafty.e("2D, Canvas, Color, Mouse")
+//     .color("red")
+//     .attr({x: 50, y:50, w: 100, h: 100 })
+//     .bind('MouseMove', function() {console.log("over")})
+//     .areaMap([0,0], [150,0], [150,150], [0,150])
+
+
+
+				});//END scene "Main"
+
+				Crafty.scene("main");
+		};
+		</script>
+		<div id="canvas"></div>
+		<div id='x'></div>
+		<div id='y'></div>
+		<div id='targetx'></div>
+		<div id='targety'></div>
+
+	</body>
+</html>
